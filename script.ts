@@ -1,9 +1,14 @@
-interface HelloWorld {
-  message: string;
+import * as dotenv from "dotenv";
+import { me } from "./graphql/me";
+import { graphQLClientConstructor } from "./helpers/graphql-client-constructor";
+
+dotenv.config();
+
+async function example() {
+  const graphQLClient = await graphQLClientConstructor();
+  const user = await me(graphQLClient);
+
+  console.log(user);
 }
 
-const test: HelloWorld = {
-  message: "Hello, world!",
-};
-
-console.log(test);
+example().catch((err) => console.log(err));
