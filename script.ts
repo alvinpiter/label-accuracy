@@ -1,7 +1,5 @@
 import * as dotenv from "dotenv";
-import { me } from "./graphql/me";
-import { graphQLClientConstructor } from "./helpers/graphql-client-constructor";
-import { uniq } from "lodash";
+import { groupBy, uniq } from "lodash";
 import Papa from "papaparse";
 import fs from "fs";
 
@@ -9,19 +7,12 @@ const OUTPUT_FOLDER = `_output`;
 
 dotenv.config();
 
-async function example() {
-  const graphQLClient = await graphQLClientConstructor();
-  const user = await me(graphQLClient);
-
-  console.log(user);
-}
-
-example().catch((err) => console.log(err));
-
 interface LabelAccuracy {
   label: string;
-  accuracy: number;
+  numberOfMatches: number;
+  numberOfReviewerLabels: number;
 }
+
 interface LabelerAccuracy {
   labeler: string;
   labelAccuracies: LabelAccuracy[];
@@ -48,13 +39,13 @@ function writeLabelAccuraciesToCSV(
    *
    * {
    *  "labeler": {
-   *    "label1": 0.5,
-   *    "label2": 0.2
+   *    "label1": "0.5",
+   *    "label2": "0.2"
    *  }
    * }
    *
    */
-  const labelerLabelAccuracyMap: Record<string, { [label: string]: number }> =
+  const labelerLabelAccuracyMap: Record<string, { [label: string]: string }> =
     {};
 
   for (const labelerAccuracy of labelerAccuracies) {
@@ -64,8 +55,9 @@ function writeLabelAccuraciesToCSV(
         labelerLabelAccuracyMap[labeler] = {};
       }
 
-      labelerLabelAccuracyMap[labeler][labelAccuracy.label] =
-        labelAccuracy.accuracy;
+      labelerLabelAccuracyMap[labeler][labelAccuracy.label] = (
+        labelAccuracy.numberOfMatches / labelAccuracy.numberOfReviewerLabels
+      ).toFixed(2);
     }
   }
 
@@ -83,8 +75,9 @@ function writeLabelAccuraciesToCSV(
       const accuracy =
         (labelerLabelAccuracyMap[labeler] &&
           labelerLabelAccuracyMap[labeler][label]) ||
-        0;
-      row.push(accuracy.toFixed(2));
+        "0";
+
+      row.push(accuracy);
     }
 
     csvRows.push(row);
@@ -103,31 +96,212 @@ function writeLabelAccuraciesToCSV(
   }
 }
 
-const labelerAccuracies = [
+const labelerAccuracies: LabelerAccuracy[] = [
   {
     labeler: "labeler1",
     labelAccuracies: [
-      { label: "label1", accuracy: 0.5 },
-      { label: "label2", accuracy: 0.3 },
-      { label: "label3", accuracy: 0.2 },
+      { label: "label1", numberOfMatches: 5, numberOfReviewerLabels: 10 },
+      { label: "label2", numberOfMatches: 3, numberOfReviewerLabels: 10 },
+      { label: "label3", numberOfMatches: 2, numberOfReviewerLabels: 10 },
     ],
   },
   {
     labeler: "labeler2",
     labelAccuracies: [
-      { label: "label2", accuracy: 0.2 },
-      { label: "label1", accuracy: 0.1 },
-      { label: "label3", accuracy: 0.7 },
+      { label: "label2", numberOfMatches: 2, numberOfReviewerLabels: 10 },
+      { label: "label1", numberOfMatches: 1, numberOfReviewerLabels: 10 },
+      { label: "label3", numberOfMatches: 7, numberOfReviewerLabels: 10 },
     ],
   },
   {
     labeler: "labeler3",
     labelAccuracies: [
-      { label: "label2", accuracy: 0.1 },
-      { label: "label1", accuracy: 0.1 },
-      { label: "label3", accuracy: 0.8 },
+      { label: "label2", numberOfMatches: 1, numberOfReviewerLabels: 10 },
+      { label: "label1", numberOfMatches: 1, numberOfReviewerLabels: 10 },
+      { label: "label3", numberOfMatches: 8, numberOfReviewerLabels: 10 },
     ],
   },
 ];
 
 writeLabelAccuraciesToCSV(labelerAccuracies, "result.csv");
+
+enum DocumentType {
+  REVIEW = "REVIEW",
+  DOCUMENT = "DOCUMENT",
+}
+
+interface TextDocument {
+  id: string;
+  originId: string;
+  documentType: DocumentType;
+  ownerDisplayName: string;
+}
+
+interface LabelPairCount {
+  firstLabel: string;
+  secondLabel: string;
+  count: number;
+}
+
+interface AgreementTable {
+  firstDocument: TextDocument;
+  secondDocument: TextDocument;
+  labelPairCounts: LabelPairCount[];
+}
+
+interface DocumentStatistic {
+  document: TextDocument;
+  labelAccuracies: LabelAccuracy[];
+}
+
+function getLabelerAccuracy(
+  documentStatistics: DocumentStatistic[]
+): LabelerAccuracy {
+  const labelAccuraciesMap: Record<string, Omit<LabelAccuracy, "label">> = {};
+
+  for (const documentStatistic of documentStatistics) {
+    for (const labelAccuracy of documentStatistic.labelAccuracies) {
+      if (!labelAccuraciesMap[labelAccuracy.label]) {
+        labelAccuraciesMap[labelAccuracy.label] = {
+          numberOfMatches: 0,
+          numberOfReviewerLabels: 0,
+        };
+      }
+
+      const newNumberOfMatches =
+        labelAccuraciesMap[labelAccuracy.label].numberOfMatches +
+        labelAccuracy.numberOfMatches;
+      const newNumberOfReviewerLabels =
+        labelAccuraciesMap[labelAccuracy.label].numberOfReviewerLabels +
+        labelAccuracy.numberOfReviewerLabels;
+
+      labelAccuraciesMap[labelAccuracy.label] = {
+        numberOfMatches: newNumberOfMatches,
+        numberOfReviewerLabels: newNumberOfReviewerLabels,
+      };
+    }
+  }
+
+  return {
+    labeler: documentStatistics[0].document.ownerDisplayName,
+    labelAccuracies: Object.entries(labelAccuraciesMap).map(
+      ([label, value]) => ({
+        label,
+        numberOfMatches: value.numberOfMatches,
+        numberOfReviewerLabels: value.numberOfReviewerLabels,
+      })
+    ),
+  };
+}
+
+function getLabelerAccuracies(
+  documentStatistics: DocumentStatistic[]
+): LabelerAccuracy[] {
+  const documentStatisticsGroupedByDocumentId = groupBy(
+    documentStatistics,
+    (documentStatistic) => documentStatistic.document.id
+  );
+
+  return Object.values(documentStatisticsGroupedByDocumentId).map(
+    (documentStatistics) => getLabelerAccuracy(documentStatistics)
+  );
+}
+
+const documentStatistics: DocumentStatistic[] = [
+  {
+    document: {
+      id: "doc1",
+      originId: "origin",
+      documentType: DocumentType.DOCUMENT,
+      ownerDisplayName: "alvin",
+    },
+    labelAccuracies: [
+      { label: "label1", numberOfMatches: 1, numberOfReviewerLabels: 2 },
+      { label: "label2", numberOfMatches: 1, numberOfReviewerLabels: 1 },
+    ],
+  },
+  {
+    document: {
+      id: "doc1",
+      originId: "origin",
+      documentType: DocumentType.DOCUMENT,
+      ownerDisplayName: "alvin",
+    },
+    labelAccuracies: [
+      { label: "label1", numberOfMatches: 2, numberOfReviewerLabels: 3 },
+      { label: "label3", numberOfMatches: 3, numberOfReviewerLabels: 3 },
+    ],
+  },
+];
+
+console.log("Labeler accuracy");
+console.log(getLabelerAccuracy(documentStatistics));
+
+function getDocumentStatistics(
+  agreementTables: AgreementTable[]
+): DocumentStatistic[] {
+  const result: DocumentStatistic[] = [];
+
+  for (const agreementTable of agreementTables) {
+    const { firstDocument, secondDocument, labelPairCounts } = agreementTable;
+
+    //Only process agreement table between labeler's document and reviewer's document
+    if (
+      firstDocument.documentType === DocumentType.DOCUMENT &&
+      secondDocument.documentType === DocumentType.REVIEW
+    ) {
+      const firstDocumentLabels = uniq(
+        labelPairCounts.map((labelPairCount) => labelPairCount.firstLabel)
+      );
+
+      const labelPairCountsStatistic =
+        getLabelPairCountsStatistic(labelPairCounts);
+
+      result.push({
+        document: firstDocument,
+        labelAccuracies: firstDocumentLabels.map((label) => ({
+          label,
+          numberOfMatches: labelPairCountsStatistic.matchCountMap[label] || 0,
+          numberOfReviewerLabels:
+            labelPairCountsStatistic.rowSumMap[label] || 0,
+        })),
+      });
+    }
+  }
+
+  return result;
+}
+
+function getLabelPairCountsStatistic(labelPairCounts: LabelPairCount[]) {
+  const rowSumMap: Record<string, number> = {};
+  const colSumMap: Record<string, number> = {};
+  const matchCountMap: Record<string, number> = {};
+
+  for (const labelPairCount of labelPairCounts) {
+    const { firstLabel, secondLabel, count } = labelPairCount;
+
+    rowSumMap[firstLabel] = rowSumMap[firstLabel] || 0;
+    rowSumMap[firstLabel] += count;
+
+    colSumMap[secondLabel] = colSumMap[secondLabel] || 0;
+    colSumMap[secondLabel] += count;
+
+    if (firstLabel === secondLabel) {
+      matchCountMap[firstLabel] = matchCountMap[firstLabel] || 0;
+      matchCountMap[firstLabel] += count;
+    }
+  }
+
+  return { rowSumMap, colSumMap, matchCountMap };
+}
+
+const labelPairCounts: LabelPairCount[] = [
+  { firstLabel: "first", secondLabel: "second", count: 1 },
+  { firstLabel: "first", secondLabel: "third", count: 2 },
+  { firstLabel: "fourth", secondLabel: "second", count: 3 },
+  { firstLabel: "fourth", secondLabel: "third", count: 4 },
+  { firstLabel: "fifth", secondLabel: "fifth", count: 16 },
+];
+
+console.log("Label pair count statistic");
+console.log(getLabelPairCountsStatistic(labelPairCounts));
