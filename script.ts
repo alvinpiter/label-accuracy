@@ -305,3 +305,10 @@ const labelPairCounts: LabelPairCount[] = [
 
 console.log("Label pair count statistic");
 console.log(getLabelPairCountsStatistic(labelPairCounts));
+
+const projectId = process.argv[2];
+if (projectId === undefined) {
+  throw new Error("Project ID is not set");
+}
+
+console.log(`Project ID: ${projectId}`);
