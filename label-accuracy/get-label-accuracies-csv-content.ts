@@ -21,13 +21,13 @@ export function getLabelAccuraciesCsvContent(
    *
    * {
    *  "labeler": {
-   *    "label1": "0.5",
-   *    "label2": "0.2"
+   *    "label1": 0.5,
+   *    "label2": 0.2
    *  }
    * }
    *
    */
-  const labelerLabelAccuracyMap: Record<string, { [label: string]: string }> =
+  const labelerLabelAccuracyMap: Record<string, { [label: string]: number }> =
     {};
 
   for (const labelerAccuracy of labelerAccuracies) {
@@ -37,9 +37,8 @@ export function getLabelAccuraciesCsvContent(
         labelerLabelAccuracyMap[labeler] = {};
       }
 
-      labelerLabelAccuracyMap[labeler][labelAccuracy.label] = (
-        labelAccuracy.numberOfMatches / labelAccuracy.numberOfReviewerLabels
-      ).toFixed(2);
+      labelerLabelAccuracyMap[labeler][labelAccuracy.label] =
+        labelAccuracy.numberOfMatches / labelAccuracy.numberOfReviewerLabels;
     }
   }
 
@@ -57,9 +56,9 @@ export function getLabelAccuraciesCsvContent(
       const accuracy =
         (labelerLabelAccuracyMap[labeler] &&
           labelerLabelAccuracyMap[labeler][label]) ||
-        "0";
+        0;
 
-      row.push(accuracy);
+      row.push(accuracy.toFixed(2));
     }
 
     csvRows.push(row);
