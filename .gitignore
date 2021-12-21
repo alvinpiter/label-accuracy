@@ -1,4 +1,5 @@
 node_modules/
 _output/
 
+.DS_Store
 .env
