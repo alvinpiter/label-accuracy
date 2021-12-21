@@ -6,7 +6,7 @@ export function getLabelPairCountsStatistic(labelPairCounts: LabelPairCount[]) {
   const matchCountMap: Record<string, number> = {};
 
   for (const labelPairCount of labelPairCounts) {
-    const { firstLabel, secondLabel, count } = labelPairCount;
+    const [firstLabel, secondLabel, count] = labelPairCount;
 
     rowSumMap[firstLabel] = rowSumMap[firstLabel] || 0;
     rowSumMap[firstLabel] += count;

@@ -16,16 +16,11 @@ export enum DocumentType {
 
 export interface TextDocument {
   id: string;
-  originId: string;
-  documentType: DocumentType;
+  type: DocumentType;
   ownerDisplayName: string;
 }
 
-export interface LabelPairCount {
-  firstLabel: string;
-  secondLabel: string;
-  count: number;
-}
+export type LabelPairCount = [string, string, number];
 
 export interface AgreementTable {
   firstDocument: TextDocument;

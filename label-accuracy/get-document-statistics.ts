@@ -12,11 +12,11 @@ export function getDocumentStatistics(
 
     //Only process agreement table between labeler's document and reviewer's document
     if (
-      firstDocument.documentType === DocumentType.DOCUMENT &&
-      secondDocument.documentType === DocumentType.REVIEW
+      firstDocument.type === DocumentType.DOCUMENT &&
+      secondDocument.type === DocumentType.REVIEW
     ) {
       const firstDocumentLabels = uniq(
-        labelPairCounts.map((labelPairCount) => labelPairCount.firstLabel)
+        labelPairCounts.map((labelPairCount) => labelPairCount[0])
       );
 
       const labelPairCountsStatistic =

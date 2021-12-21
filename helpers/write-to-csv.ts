@@ -1,7 +1,7 @@
 import Papa from "papaparse";
 import fs from "fs";
 
-const OUTPUT_FOLDER = `_output`;
+export const OUTPUT_FOLDER = `_output`;
 
 export function writeToCsv(csvRows: string[][], csvName: string) {
   const csvContentAsString = Papa.unparse(csvRows);
