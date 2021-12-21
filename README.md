@@ -4,8 +4,7 @@
 2. Run `cp .env.example .env`
 3. Open `.env` and fill in the appropriate values:
 
-- `TEAM_ID`. Open Datasaur's workspace, for example `https://datasaur.ai/teams/121/projects`. The number `121` is the `TEAM_ID`.
-- `CLIENT_ID` and `CLIENT_SECRET`. Open Datasaur's workspace, and then click the Avatar on the top right corner. After that click `Generate OAuth credentials`.
+- `CLIENT_ID` and `CLIENT_SECRET`. Open Datasaur's workspace, and then click the Avatar on the top right corner. After that click `Generate OAuth credentials`. Make sure the owner of `CLIENT_ID` and `CLIENT_SECRET` is an admin of the workspace.
 
 ## How to run
 

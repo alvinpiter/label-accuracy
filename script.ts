@@ -16,18 +16,12 @@ async function main() {
     throw new Error("Project ID is not set");
   }
 
-  const teamId = process.env.TEAM_ID!;
-
   console.log("\nInitiating GraphQL client...");
   const graphQLClient = await graphQLClientConstructor();
   console.log("GraphQL client is ready.");
 
   console.log(`\nFetching labels agreement tables for project ${projectId}...`);
-  const jobId = await calculateAgreementTables(
-    graphQLClient,
-    teamId,
-    projectId
-  );
+  const jobId = await calculateAgreementTables(graphQLClient, projectId);
 
   let agreementTables: AgreementTable[] = [];
   while (true) {
