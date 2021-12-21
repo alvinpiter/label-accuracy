@@ -48,7 +48,7 @@ The purpose of `Agreement Table` is to compare the number of labels applied by 2
 To calculate labeler's label accuracy, we compare labeler's label with reviewer's. Using our previous `Agreement Table`, let's assume A is labeler and B is reviewer. The accuracy of a label by labeler is calculated with the following formula:
 
 ```
-accuracy = number_of_matched_labels_with_reviewer/number_of_labels_by_reviewer
+accuracy = number_of_labels_matched_with_reviewer's/number_of_labels_by_reviewer
 ```
 
 Hence, the accuracy of label `dog` by labeler A is:
